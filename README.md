@@ -23,7 +23,7 @@ plt.show()
 ```
 
 ### Output:
-![Bar Graph](bar_chart.png)
+![Bar Graph](images/bar_chart.png)
 
 ## 2. Sankey Diagram
 
@@ -75,7 +75,7 @@ fig.show()
 ```
 
 ### Output:
-![Sankey Diagram](sankey_diagram.png)
+![Sankey Diagram](images/sankey_diagram.png)
 
 ## 3. Network Graph
 
@@ -135,9 +135,9 @@ plt.show()
 ```
 
 ### Output:
-![Network Graph](network_graph.png)
+![Network Graph](images/network_graph.png)
 
 ## 4. Collated Image
 
 ### Output:
-![Collated Graphs](collated_graphs.png)
+![Collated Graphs](images/collated_graphs.png)
