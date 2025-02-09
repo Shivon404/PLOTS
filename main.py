@@ -29,49 +29,65 @@ plt.show()
 
 
 
+import pandas as pd
+import plotly.graph_objects as go
 
-sankey_data = pd.read_csv('sankey_assignment.csv')  
+# Read the data
+sankey_data = pd.read_csv('sankey_assignment.csv')
 
+# Prepare the data
+df_prep = sankey_data.melt(id_vars=['LABEL'], var_name='source', value_name='value')
+df_prep.rename(columns={'LABEL': 'target'}, inplace=True)
+df_prep = df_prep[['source', 'target', 'value']]
 
-labels = ['PS', 'OMP', 'CNP', 'NRP', 'NMCCC', 'PEC', 'NCDM', 'RGS', 'Reg', 'Aca', 'Oth']
-source = [0, 1, 2, 3, 4, 5, 6, 7]
-target = [8, 9, 10, 8, 9, 10, 8, 9]
-value = sankey_data.iloc[0, 1:9].tolist()
+# Split the data into layers
+df_temp1 = df_prep[:40]  # First layer -> Second layer
+df_temp2 = df_prep[40:]  # Second layer -> Last layer
+df_temp2 = df_temp2[['target', 'source', 'value']]
+df_temp2.rename(columns={'target': 'source', 'source': 'target'}, inplace=True)
 
+# Combine the layers
+links = pd.concat([df_temp1, df_temp2], axis=0)
+unique_source_target = list(pd.unique(links[['source', 'target']].values.ravel('K')))
+mapping_dict = {k: v for v, k in enumerate(unique_source_target)}
 
-node_colors = [
-    "rgba(31, 119, 180, 0.8)",  
-    "rgba(255, 127, 14, 0.8)",  
-    "rgba(44, 160, 44, 0.8)",   
-    "rgba(214, 39, 40, 0.8)",   
-    "rgba(148, 103, 189, 0.8)", 
-    "rgba(140, 86, 75, 0.8)",   
-    "rgba(227, 119, 194, 0.8)", 
-    "rgba(127, 127, 127, 0.8)"  
+# Map the source and target nodes
+links['source'] = links['source'].map(mapping_dict)
+links['target'] = links['target'].map(mapping_dict)
+
+# Convert to dictionary for Plotly
+links_dict = links.to_dict(orient='list')
+
+# Define colors
+hex_colors = [
+    "#1f77b4", "#ff7f0e", "#2ca02c", "#d62728", "#9467bd", "#8c564b", "#e377c2", "#7f7f7f",
+    "#bcbd22", "#17becf", "#ffbb78", "#98df8a", "#ff9896", "#c5b0d5", "#c49c94", "#f7b6d2"
 ]
+node_colors = {node: hex_colors[i % len(hex_colors)] for i, node in enumerate(unique_source_target)}
 
-
-link_colors = [node_colors[src] for src in source]
-
-
+# Plotting
 fig = go.Figure(data=[go.Sankey(
-    node=dict(
-        label=labels,
-        color=node_colors + ["rgba(255, 182, 193, 0.8)", "rgba(255, 222, 173, 0.8)", "rgba(192, 192, 192, 0.8)"]  
-    ),
-    link=dict(
-        source=source,
-        target=target,
-        value=value,
-        color=link_colors
-    )
+   node=dict(
+        pad=15,
+        thickness=20,
+        line=dict(color='black', width=0.5),
+        label=unique_source_target,
+        color=[node_colors[node] for node in unique_source_target],
+   ),
+   link=dict(
+        source=links_dict['source'],
+        target=links_dict['target'],
+        value=links_dict['value'],
+        color=[node_colors[unique_source_target[src]] for src in links_dict['source']]
+   )
 )])
 
+# Layout settings
+fig.update_layout(title_text="Sankey Diagram with Dynamic Colors", font_size=10)
+fig.write_image('sankey_diagram.png')
 
-fig.update_layout(title_text="Sankey Diagram", font_size=10)
-fig.write_image("sankey_diagram.png")
+# Display the diagram
 fig.show()
-
 
 
 
