@@ -11,18 +11,19 @@ bar_data = pd.read_csv('bar_assignment.csv')
 bar_data['COUNT'] = bar_data['COUNT'].map({1: 'Yes', 0: 'No'})
 bar_grouped = bar_data.groupby(['LABEL', 'COUNT']).size().unstack(fill_value=0)
 
-# Plot
-bar_grouped.plot(kind='barh', stacked=True)
+# Plot with specified colors
+colors = {'Yes': 'blue', 'No': 'red'}
+bar_grouped.plot(kind='barh', stacked=True, color=[colors[col] for col in bar_grouped.columns])
+
 plt.xlabel('Count')
 plt.ylabel('Label')
 plt.title('Horizontal Stacked Bar Chart')
 plt.savefig('bar_chart.png')
 plt.show()
-
 ```
 
 ### Output:
-![1. Bar Graph](bar_chart.png)
+![Bar Graph](bar_chart.png)
 
 ## 2. Sankey Diagram
 
@@ -49,9 +50,6 @@ mapping_dict = {k: v for v, k in enumerate(unique_source_target)}
 links['source'] = links['source'].map(mapping_dict)
 links['target'] = links['target'].map(mapping_dict)
 
-# Convert to dictionary for Plotly
-links_dict = links.to_dict(orient='list')
-
 # Define colors
 hex_colors = ["#1f77b4", "#ff7f0e", "#2ca02c", "#d62728", "#9467bd", "#8c564b", "#e377c2"]
 node_colors = {node: hex_colors[i % len(hex_colors)] for i, node in enumerate(unique_source_target)}
@@ -64,98 +62,82 @@ fig = go.Figure(data=[go.Sankey(
         color=[node_colors[node] for node in unique_source_target],
    ),
    link=dict(
-        source=links_dict['source'],
-        target=links_dict['target'],
-        value=links_dict['value'],
-        color=[node_colors[unique_source_target[src]] for src in links_dict['source']]
+        source=links['source'],
+        target=links['target'],
+        value=links['value'],
+        color=[node_colors[unique_source_target[src]] for src in links['source']]
    )
 )])
 
 fig.update_layout(title_text="Sankey Diagram with Dynamic Colors", font_size=10)
 fig.write_image('sankey_diagram.png')
 fig.show()
-
 ```
 
 ### Output:
-![2. Sankey Diagram](sankey_diagram.png)
+![Sankey Diagram](sankey_diagram.png)
 
 ## 3. Network Graph
 
 ```python
 import pandas as pd
 import networkx as nx
+import numpy as np
 import matplotlib.pyplot as plt
 
-# Read data
+# Load the CSV file
 network_data = pd.read_csv('networks_assignment.csv')
 
-# Create graph
+# Create a new graph
 G = nx.Graph()
-colors = {'D': 'blue', 'F': 'blue', 'I': 'blue', 'N': 'blue', 'S': 'blue', 'USA': 'green'}
-for node, color in colors.items():
-    G.add_node(node, color=color)
 
-# Add edges
+# Add nodes with labels
+nodes = network_data.columns[1:].tolist()
+G.add_nodes_from(nodes)
+
+# Add edges based on the CSV data with weights
 for index, row in network_data.iterrows():
-    label = row['LABELS']
-    for col in network_data.columns[1:]:
-        if row[col] > 0:
-            G.add_edge(label, col, weight=row[col])
+    node = row['LABELS']
+    for target, value in row[1:].items():
+        if value > 0:
+            G.add_edge(node, target, weight=value)
 
-# Positions
-pos = {'D': (0, 0.5), 'F': (-0.5, -0.3), 'I': (0.5, -0.3), 'N': (-0.3, -0.8), 'S': (0.3, -0.8)}
+# Define positions for the pentagon nodes
+pentagon_nodes = ['D', 'F', 'I', 'N', 'S']
+angle = np.linspace(0, 2 * np.pi, len(pentagon_nodes), endpoint=False)
+pos = {node: (np.cos(a), np.sin(a)) for node, a in zip(pentagon_nodes, angle)}
 
-# Plot
-node_colors = [colors.get(node, 'gray') for node in G.nodes()]
+# Define positions for the outer nodes (yellow, green, gray)
+outer_radius = 2
+yellow_nodes = [node for node in nodes if node in ['AUT', 'BEL', 'BGR', 'HRV', 'CZE', 'EST', 'FRA', 'DEU', 'GRC', 'HUN', 'IRL', 'ITA', 'LVA', 'LUX', 'NLD', 'PRT', 'ROU', 'SVK', 'SVN', 'ESP']]
+green_nodes = [node for node in nodes if node in ['BIH', 'GEO', 'ISR', 'MNE', 'SRB', 'CHE', 'TUR', 'UKR', 'GBR', 'AUS', 'HKG', 'USA']]
+gray_nodes = [node for node in nodes if node in ['ASU']]
+
+# Combine all outer nodes
+outer_nodes = green_nodes + yellow_nodes + gray_nodes
+
+# Calculate angles for outer nodes to space them equally
+outer_angle = np.linspace(0, 2 * np.pi, len(outer_nodes), endpoint=False)
+
+# Update positions for outer nodes
+pos.update({node: (outer_radius * np.cos(a), outer_radius * np.sin(a)) for node, a in zip(outer_nodes, outer_angle)})
+
+# Define node colors
+color_map = {'D': 'blue', 'F': 'blue', 'I': 'blue', 'N': 'blue', 'S': 'blue', 'BIH': 'green', 'AUT': 'yellow', 'ASU': 'gray'}
+node_colors = [color_map.get(node, 'gray') for node in G.nodes()]
+
+# Draw graph
 plt.figure(figsize=(10, 8))
-nx.draw(G, pos, node_color=node_colors, with_labels=True, edge_color='gray', node_size=800, font_size=8, width=1)
-plt.title("Network Graph")
+nx.draw(G, pos, with_labels=True, node_color=node_colors, node_size=800, font_size=8, font_weight='bold', edge_color='gray', width=2)
+plt.title("Network Graph", fontweight='bold')
 plt.savefig('network_graph.png')
 plt.show()
-
 ```
 
 ### Output:
-![3. Network Graph](network_graph.png)
+![Network Graph](network_graph.png)
 
 ## 4. Collated Image
 
-```python
-from PIL import Image
-
-# Open images
-bar_img = Image.open("bar_chart.png")
-sankey_img = Image.open("sankey_diagram.png")
-network_img = Image.open("network_graph.png")
-
-# Resize images
-network_width = int(network_img.width * 1.5)
-network_height = int(network_img.height * 1.5)
-network_img = network_img.resize((network_width, network_height))
-
-bar_width = network_width // 3
-bar_height = network_height // 3
-bar_img = bar_img.resize((bar_width, bar_height))
-
-sankey_width = bar_width
-sankey_height = network_height - bar_height
-sankey_img = sankey_img.resize((sankey_width, sankey_height))
-
-# Collate images
-collated_width = network_width + bar_width
-collated_height = network_height
-collated_img = Image.new('RGB', (collated_width, collated_height), "white")
-
-collated_img.paste(bar_img, (0, 0))
-collated_img.paste(sankey_img, (0, bar_img.height))
-collated_img.paste(network_img, (bar_width, 0))
-
-collated_img.save("collated_graphs.png")
-collated_img.show()
-
-```
-
 ### Output:
-![4. Collated Image](collated_graphs.png)
-
+![Collated Graphs](collated_graphs.png)
